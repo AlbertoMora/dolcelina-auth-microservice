@@ -5,7 +5,6 @@ import {
     IGoogleOAuthClientSecrets,
     OpenbaoVaultClient,
     responseCodes,
-    secretPaths,
     sendClientError,
     sendOkResponse,
     sendServerError,
@@ -28,6 +27,7 @@ import Session from '../models/mongoose/Session';
 import { Types } from 'mongoose';
 import { sendLoginTokens } from './authentication.controller';
 import { getLocationPattern } from '../utils/geo-helper';
+import { googleOauthKey } from '../constants/secrets-contants';
 
 const googleApiUrl = 'https://oauth2.googleapis.com/';
 const defaultCallbackUri = 'http://localhost:3000/auth/google/callback';
@@ -35,9 +35,8 @@ const defaultCallbackUri = 'http://localhost:3000/auth/google/callback';
 export const getGoogleClientIdAction = async (req: Request, res: Response) => {
     try {
         const secretsManager = OpenbaoVaultClient.getInstance();
-        const googleOAuthSecrets = await secretsManager.getSecret<IGoogleOAuthClientSecrets>(
-            secretPaths.googleOAuth
-        );
+        const googleOAuthSecrets =
+            await secretsManager.getSecret<IGoogleOAuthClientSecrets>(googleOauthKey);
         if (!googleOAuthSecrets.clientId)
             return sendClientError(webErrors.srv01, res, httpCodes.not_found, {
                 status: responseCodes.serverError,
@@ -47,7 +46,7 @@ export const getGoogleClientIdAction = async (req: Request, res: Response) => {
             {
                 clientId: googleOAuthSecrets.clientId,
             },
-            res
+            res,
         );
     } catch (e) {
         return sendServerError(e, res, webErrors.srv01);
@@ -56,15 +55,14 @@ export const getGoogleClientIdAction = async (req: Request, res: Response) => {
 
 export const checkGoogleSessionInfoAction = async (
     req: Request<{}, {}, IGoogleSessionViewModel, {}>,
-    res: Response
+    res: Response,
 ) => {
     const { code } = req.body;
     const { userIp, userOs, userAgent } = getBasicWebData(req);
     try {
         const secretsManager = OpenbaoVaultClient.getInstance();
-        const googleOAuthSecrets = await secretsManager.getSecret<IGoogleOAuthClientSecrets>(
-            secretPaths.googleOAuth
-        );
+        const googleOAuthSecrets =
+            await secretsManager.getSecret<IGoogleOAuthClientSecrets>(googleOauthKey);
         if (code === 'test') return sendOkResponse({}, res);
         const { data } = await axios.post<IGoogleOAuthResponse>(`${googleApiUrl}/token`, {
             code,
@@ -106,10 +104,10 @@ const findOrCreateUser = async (info: IGoogleOAuthTokenInfo): Promise<user> => {
         username,
         name: given_name,
         lastname: family_name,
-        pass: dbConstants.status.pending,
+        password: dbConstants.status.pending,
         prof_pic: picture,
-        isactive: 1,
-        creation_date: moment().utc().toDate(),
+        is_active: 1,
+        created_at: moment().utc().toDate(),
         last_modified: moment().utc().toDate(),
     });
     return newUser;

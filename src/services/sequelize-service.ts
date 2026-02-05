@@ -1,12 +1,14 @@
 import { Options, Sequelize } from 'sequelize';
 import { initModels } from '../models/mariadb/init-models';
 
-import fs from 'fs';
+import fs from 'node:fs';
 import { IDbSecrets, OpenbaoVaultClient } from '@aure/commons';
+import { dbKey } from '../constants/secrets-contants';
 
 export class SequelizeService {
     private static instance: SequelizeService;
     private static openBaoClient: OpenbaoVaultClient;
+    private static initializing?: Promise<void>;
 
     public isReady: boolean = false;
     public db!: ReturnType<typeof initModels>;
@@ -23,11 +25,17 @@ export class SequelizeService {
 
     public static async getInstance(): Promise<SequelizeService> {
         if (!SequelizeService.instance) {
-            if (!SequelizeService.instance) {
-                SequelizeService.instance = new SequelizeService();
-            }
-            await SequelizeService.instance.initialize();
+            SequelizeService.instance = new SequelizeService();
         }
+
+        if (!SequelizeService.instance.isReady) {
+            SequelizeService.initializing ??= SequelizeService.instance.initialize().catch(err => {
+                SequelizeService.initializing = undefined;
+                throw err;
+            });
+            await SequelizeService.initializing;
+        }
+
         return SequelizeService.instance;
     }
 
@@ -41,7 +49,7 @@ export class SequelizeService {
     }
 
     private async initDb(): Promise<void> {
-        const dbSecrets = await SequelizeService.openBaoClient.getSecret<IDbSecrets>('msks.db');
+        const dbSecrets = await SequelizeService.openBaoClient.getSecret<IDbSecrets>(dbKey);
 
         const dbOptions: Options = {
             dialect: 'mariadb',
@@ -72,7 +80,7 @@ export class SequelizeService {
             dbSecrets.dbName,
             dbSecrets.dbUser,
             dbSecrets.dbPassword,
-            dbOptions
+            dbOptions,
         );
 
         this.db = initModels(this.sequelize);
@@ -83,7 +91,7 @@ export class SequelizeService {
         try {
             await this.sequelize.authenticate();
             console.log(
-                `Connection has been established successfully. DB running on port ${this.port}`
+                `Connection has been established successfully. DB running on port ${this.port}`,
             );
         } catch (err) {
             console.error('Unable to connect to the database:', err);
