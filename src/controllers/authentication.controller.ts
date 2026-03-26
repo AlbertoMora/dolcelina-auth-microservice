@@ -33,300 +33,192 @@ import { IUserSession } from '../types/commons.types';
 import { IRefreshToken } from '../types/web-types';
 import { SequelizeService } from '../services/sequelize-service';
 
-// export const loginAction = async (req: Request, res: Response) => {
-//     const { username, password } = req.body;
-//     const { userIp, userOs, userAgent } = getBasicWebData(req);
+export const loginAction = async (req: Request, res: Response) => {
+    const { username, password } = req.body;
+    const { userIp, userOs, userAgent } = getBasicWebData(req);
 
-//     const sequelize = await SequelizeService.getInstance();
-//     const user = await sequelize.db.user.findOne({
-//         where: {
-//             [Op.or]: {
-//                 username: username,
-//                 email: username,
-//             },
-//         },
-//     });
-//     if (!user) return sendClientError(webErrors.auth02, res, httpCodes.bad_request);
+    const sequelize = await SequelizeService.getInstance();
+    const user = await sequelize.db.user.findOne({
+        where: {
+            [Op.or]: {
+                username: username,
+                email: username,
+            },
+        },
+    });
+    if (!user) return sendClientError(webErrors.auth02, res, httpCodes.bad_request);
 
-//     if (await isUserBanned(user.id))
-//         return sendClientError(webErrors.auth08, res, httpCodes.bad_request);
+    if (await isUserBanned(user.id))
+        return sendClientError(webErrors.auth08, res, httpCodes.bad_request);
 
-//     const isPassOk = await argon.verify(user.pass, password);
+    const isPassOk = await argon.verify(user.password, password);
 
-//     if (!isPassOk) return sendClientError(webErrors.auth02, res, httpCodes.bad_request);
+    if (!isPassOk) return sendClientError(webErrors.auth02, res, httpCodes.bad_request);
 
-//     const ipGeo = getLocationPattern(userIp);
+    const currentSession = await Session.create({
+        _id: new Types.ObjectId(),
+        userId: user.id,
+        deviceId: dbConstants.status.pending,
+        deviceOS: userOs === webConstants.commonValues.unknown ? userAgent : userOs,
+        sessionIP: userIp,
+        isActive: true,
+        location: location,
+        signedInSince: moment().toDate(),
+    });
 
-//     const currentSession = await Session.create({
-//         _id: new Types.ObjectId(),
-//         userId: user.id,
-//         deviceId: dbConstants.status.pending,
-//         deviceOS: userOs === webConstants.commonValues.unknown ? userAgent : userOs,
-//         sessionIP: userIp,
-//         isActive: false,
-//         location: ipGeo,
-//         signedInSince: moment().toDate(),
-//     });
-//     await currentSession.save();
+    const tokens = await getLoginTokens(user, currentSession.id);
 
-//     const nonce = `${Math.random()}||${moment().add(1, 'minute').unix()}`;
-//     await redisClient.set(currentSession.id.toString(), nonce);
+    if (!tokens) return sendClientError(webErrors.auth02, res, httpCodes.bad_request);
 
-//     return sendOkResponse(
-//         {
-//             status: responseCodes.ok,
-//             nonce,
-//             sessionId: currentSession.id,
-//         },
-//         res
-//     );
-// };
+    sendOkResponse({ status: responseCodes.ok, ...tokens }, res);
+};
 
-// export const checkLoginChallengeAction = async (
-//     req: Request<{}, {}, ICheckChallengeViewModel, {}>,
-//     res: Response
-// ) => {
-//     const {
-//         signedNonce,
-//         deviceId,
-//         deviceBrand,
-//         deviceModel,
-//         deviceName,
-//         deviceType,
-//         rsaPubKey,
-//         sessionId,
-//     } = req.body;
+export const checkMfaAction = async (req: Request<{}, {}, IMFAViewModel, {}>, res: Response) => {
+    const { code, sessionId, shouldDeviceSafe } = req.body;
+    const attempts = await getCurrentMfaAttempt(sessionId);
 
-//     const currentSession = await Session.findById(sessionId);
+    const session = await Session.findById(sessionId);
+    if (!session)
+        return sendClientError(webErrors.auth14, res, httpCodes.bad_request, { attempts });
 
-//     if (!currentSession) return sendClientError(webErrors.auth14, res, httpCodes.bad_request);
+    const mfa = await MfaModel.findOne({
+        sessionId: session.id,
+        used: false,
+        dueDate: { $gt: moment().toDate() },
+    });
+    if (!mfa)
+        return sendClientError({ ...webErrors.auth14 }, res, httpCodes.bad_request, { attempts });
 
-//     const sequelize = await SequelizeService.getInstance();
-//     const user = await sequelize.db.user.findByPk(currentSession.userId);
+    const isCodeOk = await argon.verify(mfa.code, code);
 
-//     if (!user) return sendClientError(webErrors.auth14, res, httpCodes.bad_request);
+    if (isCodeOk) {
+        MfaTokenSendOkResponse(session, res);
+    } else {
+        sendClientError(webErrors.auth14, res, httpCodes.bad_request, { attempts });
+    }
+};
 
-//     const device = await getDeviceByIdOrCreate({
-//         deviceId,
-//         deviceBrand,
-//         deviceModel,
-//         deviceName,
-//         deviceType,
-//         rsaPubKey,
-//         user: user,
-//     });
+export const signUpAction = async (req: Request<{}, {}, UserViewModel, {}>, res: Response) => {
+    const { name, lastname, username, password, email } = req.body;
+    const { userIp, userOs, userAgent } = getBasicWebData(req);
+    const location = getLocationPattern(userIp);
+    const id = uuid();
+    const pass = await argon.hash(password);
 
-//     const isChallengeOk = await checkChallengeInfo(currentSession, signedNonce, device, req);
+    const sequelize = await SequelizeService.getInstance();
+    const newUser = await sequelize.db.user.create({
+        id,
+        name,
+        lastname,
+        username,
+        email,
+        password: pass,
+        is_active: 1,
+        created_at: moment().utc().toDate(),
+        last_modified: moment().utc().toDate(),
+    });
+    const currentSession = await Session.create({
+        _id: new Types.ObjectId(),
+        userId: newUser.id,
+        deviceId: dbConstants.status.pending,
+        deviceOS: userOs === webConstants.commonValues.unknown ? userAgent : userOs,
+        sessionIP: userIp,
+        isActive: true,
+        location: location,
+        signedInSince: moment().toDate(),
+    });
+    await newUser.save();
 
-//     if (!isChallengeOk) return sendClientError(webErrors.auth14, res, httpCodes.bad_request);
+    sendLoginTokens(currentSession, newUser, res);
+};
 
-//     currentSession.deviceId = device.serial_number ?? '';
-//     currentSession?.save();
+export const checkAccessTokenAction = async (req: Request, res: Response) => {
+    const [, accessToken] = req.headers.authorization?.split(' ') ?? [];
+    if (!accessToken) return sendClientError(webErrors.auth05, res, httpCodes.bad_request);
+    const tokenData = (await getTokenInfo(accessToken)) as IUserSession | undefined;
 
-//     if (device?.dataValues.status === deviceConstants.deviceStatus.activeSafe) {
-//         await sendLoginTokens(currentSession, user, res);
-//     } else {
-//         await sendMfaResponse(user, res, sessionId, device);
-//     }
-// };
+    if (!tokenData) return sendClientError(webErrors.auth05, res, httpCodes.bad_request);
 
-// export const checkMfaAction = async (req: Request<{}, {}, IMFAViewModel, {}>, res: Response) => {
-//     const { code, sessionId, shouldDeviceSafe } = req.body;
-//     const attempts = await getCurrentMfaAttempt(sessionId);
+    const sequelize = await SequelizeService.getInstance();
+    const user = await sequelize.db.user.findByPk(tokenData.user.id);
+    const currentSession = await Session.findById(tokenData.sessionId);
 
-//     const session = await Session.findById(sessionId);
-//     if (!session)
-//         return sendClientError(webErrors.auth14, res, httpCodes.bad_request, { attempts });
-//     const sequelize = await SequelizeService.getInstance();
-//     const device = await sequelize.db.device.findOne({
-//         where: { serial_number: session.deviceId },
-//     });
-//     if (!device || device.status === deviceConstants.deviceStatus.banned)
-//         return sendClientError(webErrors.auth14, res, httpCodes.bad_request, { attempts });
-//     const mfa = await MfaModel.findOne({
-//         sessionId: session.id,
-//         deviceId: device.id,
-//         used: false,
-//         dueDate: { $gt: moment().toDate() },
-//     });
-//     if (!mfa)
-//         return sendClientError({ ...webErrors.auth14 }, res, httpCodes.bad_request, { attempts });
+    if (!user || !currentSession?.isActive)
+        return sendClientError(webErrors.auth05, res, httpCodes.bad_request);
 
-//     const isCodeOk = await argon.verify(mfa.code, code);
+    const isBanned = await isUserBanned(user.id);
 
-//     if (isCodeOk) {
-//         MfaTokenSendOkResponse(session, res, device, shouldDeviceSafe);
-//     } else {
-//         sendClientError(webErrors.auth14, res, httpCodes.bad_request, { attempts });
-//     }
-// };
+    if (isBanned) return sendClientError(webErrors.auth05, res, httpCodes.bad_request);
 
-// export const signUpAction = async (req: Request<{}, {}, UserViewModel, {}>, res: Response) => {
-//     const { name, lastname, username, password, email } = req.body;
-//     const { userIp, userOs, userAgent } = getBasicWebData(req);
-//     const location = getLocationPattern(userIp);
-//     const id = uuid();
-//     const pass = await argon.hash(password);
+    return sendOkResponse({ status: responseCodes.ok }, res);
+};
 
-//     const sequelize = await SequelizeService.getInstance();
-//     const newUser = await sequelize.db.user.create({
-//         id,
-//         name,
-//         lastname,
-//         username,
-//         email,
-//         pass,
-//         isactive: 1,
-//         creation_date: moment().utc().toDate(),
-//         last_modified: moment().utc().toDate(),
-//     });
-//     const currentSession = await Session.create({
-//         _id: new Types.ObjectId(),
-//         userId: newUser.id,
-//         deviceId: dbConstants.status.pending,
-//         deviceOS: userOs === webConstants.commonValues.unknown ? userAgent : userOs,
-//         sessionIP: userIp,
-//         isActive: true,
-//         location: location,
-//         signedInSince: moment().toDate(),
-//     });
-//     await newUser.save();
+export const refreshSessionAction = async (req: Request, res: Response) => {
+    const { userIp, userOs } = getBasicWebData(req);
+    const location = getLocationPattern(userIp);
+    const sequelize = await SequelizeService.getInstance();
 
-//     sendLoginTokens(currentSession, newUser, res);
-// };
+    const [, refreshToken] = req.headers.authorization?.split(' ') ?? [];
+    if (!refreshToken) return sendClientError(webErrors.auth05, res, httpCodes.bad_request);
 
-// export const checkAccessTokenAction = async (req: Request, res: Response) => {
-//     const [, accessToken] = req.headers.authorization?.split(' ') ?? [];
-//     if (!accessToken) return sendClientError(webErrors.auth05, res, httpCodes.bad_request);
-//     const tokenData = (await getTokenInfo(accessToken)) as IUserSession | undefined;
+    const tokenData = (await getTokenInfo(refreshToken)) as IRefreshToken;
 
-//     if (!tokenData) return sendClientError(webErrors.auth05, res, httpCodes.bad_request);
+    const user = await sequelize.db.user.findByPk(tokenData.userId);
+    const isBanned = await isUserBanned(tokenData.userId);
 
-//     const sequelize = await SequelizeService.getInstance();
-//     const user = await sequelize.db.user.findByPk(tokenData.user.id);
-//     const currentSession = await Session.findById(tokenData.sessionId);
+    if (!user || isBanned) return sendClientError(webErrors.auth05, res, httpCodes.bad_request);
 
-//     if (!user?.isactive || !currentSession?.isActive)
-//         return sendClientError(webErrors.auth05, res, httpCodes.bad_request);
+    const currentSession = await Session.findById(tokenData.sessionId);
 
-//     const isBanned = await isUserBanned(user.id);
+    currentSession?.isActive && (currentSession.isActive = false);
 
-//     if (isBanned) return sendClientError(webErrors.auth05, res, httpCodes.bad_request);
+    const newSession = await Session.create({
+        _id: new Types.ObjectId(),
+        userId: user.id,
+        deviceId: currentSession?.deviceId,
+        deviceOS: userOs ?? webConstants.commonValues.unknown,
+        sessionIP: userIp,
+        isActive: true,
+        location,
+        signedInSince: moment().toDate(),
+    });
+    await newSession.save();
 
-//     return sendOkResponse({ status: responseCodes.ok }, res);
-// };
+    return sendLoginTokens(newSession, user, res);
+};
 
-// export const refreshSessionAction = async (req: Request, res: Response) => {
-//     const { userIp, userAgent, userOs } = getBasicWebData(req);
-//     const location = getLocationPattern(userIp);
-//     const sequelize = await SequelizeService.getInstance();
+export const signOutAction = async (req: Request, res: Response) => {
+    const [, accessToken] = req.headers.authorization?.split(' ') ?? [];
+    if (!accessToken) return sendClientError(webErrors.auth15, res, httpCodes.bad_request);
 
-//     const [, refreshToken] = req.headers.authorization?.split(' ') ?? [];
-//     if (!refreshToken) return sendClientError(webErrors.auth05, res, httpCodes.bad_request);
+    const tokenData = getTokenData<IUserSession>(accessToken);
+    if (!tokenData) return sendClientError(webErrors.auth15, res, httpCodes.bad_request);
 
-//     const tokenData = (await getTokenInfo(refreshToken)) as IRefreshToken;
+    const currentSession = await Session.findById(tokenData.sessionId);
 
-//     const user = await sequelize.db.user.findByPk(tokenData.userId);
-//     const isBanned = await isUserBanned(tokenData.userId);
+    if (!currentSession) return sendClientError(webErrors.auth15, res, httpCodes.bad_request);
 
-//     if (!user || isBanned) return sendClientError(webErrors.auth05, res, httpCodes.bad_request);
+    currentSession.isActive = false;
+    await currentSession.save();
 
-//     const currentSession = await Session.findById(tokenData.sessionId);
-//     const device = await sequelize.db.device.findOne({
-//         where: { serial_number: currentSession?.deviceId },
-//     });
+    return sendOkResponse({ status: responseCodes.ok }, res);
+};
 
-//     if (!checkSessionInfo(currentSession, userOs, userAgent ?? '', location, device))
-//         return sendClientError(webErrors.auth05, res, httpCodes.bad_request);
+const isUserBanned = async (playerId: string) => {
+    const sequelize = await SequelizeService.getInstance();
+    const lastBanCase = await sequelize.db.ban_case.findOne({
+        where: {
+            banned_player_id: playerId,
+            is_player_banned: true,
+        },
+        order: [['resolved_at', 'DESC']],
+    });
 
-//     currentSession?.isActive && (currentSession.isActive = false);
-
-//     const newSession = await Session.create({
-//         _id: new Types.ObjectId(),
-//         userId: user.id,
-//         deviceId: currentSession?.deviceId,
-//         deviceOS: userOs ?? webConstants.commonValues.unknown,
-//         sessionIP: userIp,
-//         isActive: true,
-//         location,
-//         signedInSince: moment().toDate(),
-//     });
-//     await newSession.save();
-
-//     return sendLoginTokens(newSession, user, res);
-// };
-
-// export const signOutAction = async (req: Request, res: Response) => {
-//     const [, accessToken] = req.headers.authorization?.split(' ') ?? [];
-//     if (!accessToken) return sendClientError(webErrors.auth15, res, httpCodes.bad_request);
-
-//     const tokenData = getTokenData<IUserSession>(accessToken);
-//     if (!tokenData) return sendClientError(webErrors.auth15, res, httpCodes.bad_request);
-
-//     const currentSession = await Session.findById(tokenData.sessionId);
-
-//     if (!currentSession) return sendClientError(webErrors.auth15, res, httpCodes.bad_request);
-
-//     currentSession.isActive = false;
-//     await currentSession.save();
-
-//     return sendOkResponse({ status: responseCodes.ok }, res);
-// };
-
-// const isUserBanned = async (playerId: string) => {
-//     const sequelize = await SequelizeService.getInstance();
-//     const lastBanCase = await sequelize.db.ban_case.findOne({
-//         where: {
-//             banned_player_id: playerId,
-//             is_player_banned: true,
-//         },
-//         order: [['resolved_at', 'DESC']],
-//     });
-
-//     if (!lastBanCase?.banned_until) {
-//         return false;
-//     } else {
-//         return lastBanCase.banned_until > moment(moment.now()).toDate();
-//     }
-// };
-
-// const getDeviceByIdOrCreate = async ({
-//     deviceId,
-//     deviceBrand,
-//     deviceName,
-//     deviceType,
-//     deviceModel,
-//     user,
-//     location,
-//     rsaPubKey,
-// }: IDeviceParams) => {
-//     const sequelize = await SequelizeService.getInstance();
-//     let device = await sequelize.db.device.findOne({
-//         where: {
-//             serial_number: deviceId,
-//         },
-//     });
-
-//     if (!device) {
-//         device = await sequelize.db.device.create({
-//             id: uuid(),
-//             brand: deviceBrand,
-//             devicePass: 'null',
-//             device_name: deviceName,
-//             device_type: deviceType,
-//             model: deviceModel,
-//             serial_number: deviceId,
-//             status: deviceConstants.deviceStatus.activeNoSafe,
-//             user_id: user.dataValues.id,
-//             rsa_pub_key: rsaPubKey,
-//             location,
-//         });
-//         if (device && !device.rsa_pub_key) device.rsa_pub_key = rsaPubKey;
-
-//         device?.save();
-//     }
-//     return device;
-// };
+    if (lastBanCase?.banned_until) {
+        return lastBanCase.banned_until > moment(moment.now()).toDate();
+    }
+    return false;
+};
 
 export const sendLoginTokens = async (currentSession: ISession, user: user, res: Response) => {
     currentSession.isActive = true;
@@ -420,85 +312,21 @@ const getLoginTokens = async (user: user, sessionId: string) => {
 //     );
 // };
 
-// const MfaTokenSendOkResponse = async (
-//     session: ISession,
-//     res: Response,
-//     device: device,
-//     shouldDeviceSafe: boolean
-// ) => {
-//     const sequelize = await SequelizeService.getInstance();
-//     const user = await sequelize.db.user.findByPk(session.userId);
-//     if (!user) return sendClientError(webErrors.auth14, res, httpCodes.bad_request);
-//     device.status = shouldDeviceSafe
-//         ? deviceConstants.deviceStatus.activeSafe
-//         : deviceConstants.deviceStatus.activeNoSafe;
-//     sendLoginTokens(session, user, res);
-// };
+const MfaTokenSendOkResponse = async (session: ISession, res: Response) => {
+    const sequelize = await SequelizeService.getInstance();
+    const user = await sequelize.db.user.findByPk(session.userId);
+    if (!user) return sendClientError(webErrors.auth14, res, httpCodes.bad_request);
+    sendLoginTokens(session, user, res);
+};
 
-// const checkChallengeInfo = async (
-//     currentSession: ISession,
-//     signedNonce: string,
-//     device: device,
-//     req: Request
-// ) => {
-//     const { userIp, userOs, userAgent } = getBasicWebData(req);
-//     const location = getLocationPattern(userIp);
-
-//     if (!checkSessionInfo(currentSession, userOs, userAgent ?? '', location, device, true))
-//         return false;
-
-//     const cachedNonce = await redisClient.getDel(currentSession.id?.toString());
-
-//     if (!cachedNonce) return false;
-
-//     const isNonceOk = verifySpkiSignature(
-//         device?.rsa_pub_key ?? '',
-//         cachedNonce ?? '',
-//         signedNonce
-//     );
-//     const nonceDate = moment.unix(parseInt(cachedNonce?.split('||')[1] ?? '0')).unix();
-//     const currentDate = moment().unix();
-
-//     if (!isNonceOk || nonceDate <= currentDate) return false;
-
-//     return true;
-// };
-
-// const checkSessionInfo = (
-//     session: ISession | null,
-//     userOs: string,
-//     userAgent: string,
-//     location: string,
-//     device: device | null,
-//     omitSession?: boolean
-// ) => {
-//     return (
-//         (session?.deviceOS === userOs || session?.deviceOS === userAgent) &&
-//         location === session.location &&
-//         (session?.isActive || omitSession) &&
-//         !!device
-//     );
-// };
-
-// const getCurrentMfaAttempt = async (sessionId: string) => {
-//     const mfaAttemptsKey = `sessionMfaAttempts__${sessionId}`;
-//     let attempts = parseInt((await redisClient.get(mfaAttemptsKey)) ?? '-1');
-//     if (attempts === -1) {
-//         attempts = 1;
-//     } else {
-//         attempts += 1;
-//     }
-//     await redisClient.set(mfaAttemptsKey, attempts);
-//     return attempts;
-// };
-
-// interface IDeviceParams {
-//     deviceId: string;
-//     deviceBrand: string;
-//     deviceName: string;
-//     deviceType: string;
-//     deviceModel: string;
-//     user: user;
-//     location?: string;
-//     rsaPubKey?: string;
-// }
+const getCurrentMfaAttempt = async (sessionId: string) => {
+    const mfaAttemptsKey = `sessionMfaAttempts__${sessionId}`;
+    let attempts = Number.parseInt((await redisClient.get(mfaAttemptsKey)) ?? '-1');
+    if (attempts === -1) {
+        attempts = 1;
+    } else {
+        attempts += 1;
+    }
+    await redisClient.set(mfaAttemptsKey, attempts);
+    return attempts;
+};
