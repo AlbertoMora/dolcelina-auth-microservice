@@ -170,21 +170,10 @@ export const refreshSessionAction = async (req: Request, res: Response) => {
 
     const currentSession = await Session.findById(tokenData.sessionId);
 
-    currentSession?.isActive && (currentSession.isActive = false);
+    if (!currentSession?.isActive)
+        return sendClientError(webErrors.auth05, res, httpCodes.bad_request);
 
-    const newSession = await Session.create({
-        _id: new Types.ObjectId(),
-        userId: user.id,
-        deviceId: currentSession?.deviceId,
-        deviceOS: userOs ?? webConstants.commonValues.unknown,
-        sessionIP: userIp,
-        isActive: true,
-        location,
-        signedInSince: moment().toDate(),
-    });
-    await newSession.save();
-
-    return sendLoginTokens(newSession, user, res);
+    return sendLoginTokens(currentSession, user, res);
 };
 
 export const signOutAction = async (req: Request, res: Response) => {
@@ -236,8 +225,7 @@ export const sendLoginTokens = async (currentSession: ISession, user: user, res:
 };
 
 const getLoginTokens = async (user: user, sessionId: string) => {
-    const { password, name, lastname, created_at, last_modified, email, ...userForToken } =
-        user.dataValues;
+    const { password, created_at, last_modified, ...userForToken } = user.dataValues;
 
     const accessToken = await createJWT({
         user: { ...userForToken },
