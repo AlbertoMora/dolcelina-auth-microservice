@@ -6,28 +6,23 @@ import { redisClient } from '../config/db-config';
 import {
     createJWT,
     dbConstants,
-    getNewCode,
-    getSafeMail,
     getTokenData,
     getTokenInfo,
     httpCodes,
     responseCodes,
     sendClientError,
     sendOkResponse,
-    verifySpkiSignature,
     webConstants,
     webErrors,
 } from '@aure/commons';
 import moment from 'moment';
 import { user } from '../models/mariadb/user';
-import { deviceConstants } from '../constants/device-constants';
 import Session, { ISession } from '../models/mongoose/Session';
 import { Op } from 'sequelize';
 import { Types } from 'mongoose';
 import { getBasicWebData } from '../utils/webclient-helper';
 import { getLocationPattern } from '../utils/geo-helper';
-import { ICheckChallengeViewModel } from '../viewmodels/login.viewmodel';
-import MfaModel, { IMfa } from '../models/mongoose/MFA';
+import MfaModel from '../models/mongoose/MFA';
 import { IMFAViewModel } from '../viewmodels/mfa.viewmodel';
 import { IUserSession } from '../types/commons.types';
 import { IRefreshToken } from '../types/web-types';
@@ -74,7 +69,7 @@ export const loginAction = async (req: Request, res: Response) => {
 };
 
 export const checkMfaAction = async (req: Request<{}, {}, IMFAViewModel, {}>, res: Response) => {
-    const { code, sessionId, shouldDeviceSafe } = req.body;
+    const { code, sessionId } = req.body;
     const attempts = await getCurrentMfaAttempt(sessionId);
 
     const session = await Session.findById(sessionId);
@@ -154,8 +149,6 @@ export const checkAccessTokenAction = async (req: Request, res: Response) => {
 };
 
 export const refreshSessionAction = async (req: Request, res: Response) => {
-    const { userIp, userOs } = getBasicWebData(req);
-    const location = getLocationPattern(userIp);
     const sequelize = await SequelizeService.getInstance();
 
     const [, refreshToken] = req.headers.authorization?.split(' ') ?? [];
@@ -241,64 +234,6 @@ const getLoginTokens = async (user: user, sessionId: string) => {
 
     return { accessToken, refreshToken };
 };
-
-// const getUserContactData = (user: user) => {
-//     if (!user) {
-//         return null;
-//     }
-
-//     return { email: user.dataValues.email ?? null };
-// };
-
-// const sendMfaResponse = async (
-//     user: user,
-//     res: Response,
-//     sessionId: string,
-//     device: device,
-//     currentMfa?: IMfa
-// ) => {
-//     const { email } = getUserContactData(user) ?? {};
-
-//     if (!email) return sendClientError(webErrors.auth13, res, httpCodes.bad_request);
-
-//     const currentCode = getNewCode();
-//     const hashedCode = await argon.hash(currentCode);
-//     console.log(currentCode);
-//     //replace literals with json object fields in constants
-//     // await sendEmail(
-//     //     'Verificación de Inicio de Sesión',
-//     //     `<p>Tu código de verificación es: ${currentCode}</p>`,
-//     //     { mail: 'auregames7@trial-7dnvo4d5x7rl5r86.mlsender.net', name: 'Aure Games' },
-//     //     [{ mail: 'adewcalkx55@gmail.com', name: 'Adew' }]
-//     // );
-
-//     if (currentMfa) {
-//         currentMfa.used = true;
-//         await currentMfa.save();
-//     } else {
-//         const dueDate = moment().add(1, 'minute').toDate();
-//         const newMfa = await MfaModel.create({
-//             _id: new Types.ObjectId(),
-//             code: hashedCode,
-//             sessionId: sessionId,
-//             userId: user.dataValues.id,
-//             deviceId: device.dataValues.id,
-//             used: false,
-//             dueDate,
-//         });
-
-//         await newMfa.save();
-//     }
-
-//     sendOkResponse(
-//         {
-//             status: responseCodes.ok,
-//             shouldVerifySession: true,
-//             sendTo: getSafeMail(email),
-//         },
-//         res
-//     );
-// };
 
 const MfaTokenSendOkResponse = async (session: ISession, res: Response) => {
     const sequelize = await SequelizeService.getInstance();
