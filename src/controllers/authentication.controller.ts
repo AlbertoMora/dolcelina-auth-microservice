@@ -31,6 +31,7 @@ import { SequelizeService } from '../services/sequelize-service';
 export const loginAction = async (req: Request, res: Response) => {
     const { username, password } = req.body;
     const { userIp, userOs, userAgent } = getBasicWebData(req);
+    const location = getLocationPattern(userIp);
 
     const sequelize = await SequelizeService.getInstance();
     const user = await sequelize.db.user.findOne({

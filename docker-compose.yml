@@ -1,0 +1,14 @@
+services:
+  auth-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: auth-microservice-dev
+    ports:
+      - "3202:3202"
+    environment:
+      NODE_ENV: development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: yarn start

@@ -95,7 +95,13 @@ npm install
 Start the development server with auto-reload:
 
 ```bash
-npm start
+yarn start
+```
+
+Run the service in Docker with hot reload enabled:
+
+```bash
+docker compose up --build
 ```
 
 ### Production
@@ -103,7 +109,15 @@ npm start
 Run in production mode:
 
 ```bash
-npm run prod
+yarn build
+yarn prod
+```
+
+Build and run the production Docker image:
+
+```bash
+docker build -t auth-microservice .
+docker run -p 3202:3202 auth-microservice
 ```
 
 ### TypeScript Watch Mode
@@ -111,8 +125,18 @@ npm run prod
 Compile TypeScript and copy resources on file changes:
 
 ```bash
-npm run tsw
+yarn tsw
 ```
+
+## Docker Workflow
+
+- `Dockerfile` builds a production image that compiles TypeScript and runs `dist/index.js`.
+- `Dockerfile.dev` runs the service with `nodemon` and `ts-node`.
+- `docker-compose.yml` mounts the project into the container so edits from VS Code trigger hot
+  reload.
+
+For Docker Desktop on Windows, `nodemon` runs with legacy file watching enabled in `nodemon.json` to
+make reloads reliable with bind mounts.
 
 ## Project Structure
 

@@ -94,6 +94,7 @@ export class SequelizeService {
                 `Connection has been established successfully. DB running on port ${this.port}`,
             );
         } catch (err) {
+            this.isReady = false;
             console.error('Unable to connect to the database:', err);
             throw err; // Propagar el error para manejo externo
         }
