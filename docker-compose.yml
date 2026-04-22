@@ -12,3 +12,5 @@ services:
       - .:/app
       - /app/node_modules
     command: yarn start
+    networks:
+      - ms-network
