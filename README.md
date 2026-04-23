@@ -87,6 +87,7 @@ Built for a distributed microservices architecture, this service handles:
 ### Installation
 
 ```bash
+npm config set registry http://verdaccio:4873
 npm install
 ```
 

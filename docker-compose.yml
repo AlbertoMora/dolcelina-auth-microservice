@@ -8,9 +8,31 @@ services:
       - "3202:3202"
     environment:
       NODE_ENV: development
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     volumes:
       - .:/app
       - /app/node_modules
-    command: yarn start
+      - shared-tokens:/app/shared-tokens
+    command: >
+      sh -c "npm config set registry http://verdaccio:4873
+      && npm config set //verdaccio:4873/:username admin
+      && npm config set //verdaccio:4873/:_password YWRtaW4=
+      && npm config set //verdaccio:4873/:email admin@verdaccio.local
+      && yarn config set registry http://verdaccio:4873
+      && yarn install --frozen-lockfile
+      && yarn start"
     networks:
       - ms-network
+
+networks:
+  ms-network:
+    external: true
+
+volumes:
+  shared-tokens:
+        driver: local
+        driver_opts:
+            type: none
+            o: bind
+            device: ${PROJECT_DOCKER_SHARED_ROUTE}
