@@ -5,11 +5,13 @@ import {
     deleteUserAction,
     getUserByIdAction,
     getUsersByName,
+    updatePasswordAction,
     updateUserAction,
 } from '../controllers/users.controller';
 
 const router = Router();
 
+router.put('/password', controllerHandler(updatePasswordAction));
 router.get('/', controllerHandler(getUsersByName));
 router.get('/:id', controllerHandler(getUserByIdAction));
 router.put('/:id', controllerHandler(updateUserAction));

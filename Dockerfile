@@ -29,6 +29,7 @@ RUN npm config set registry http://verdaccio:4873 \
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3202
+EXPOSE 9229
 
 CMD ["node", "dist/index.js"]
 

@@ -9,3 +9,8 @@ export interface UserViewModel {
     prof_pic?: string;
     is_active?: boolean;
 }
+
+export interface IUserPasswordUpdateViewModel {
+    oldPassword: string;
+    password: string;
+}

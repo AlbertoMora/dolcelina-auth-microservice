@@ -218,11 +218,14 @@ export const sendLoginTokens = async (currentSession: ISession, user: user, res:
     );
 };
 
-const getLoginTokens = async (user: user, sessionId: string) => {
+export const getLoginTokens = async (user: user, sessionId: string) => {
     const { password, created_at, last_modified, ...userForToken } = user.dataValues;
 
     const accessToken = await createJWT({
-        user: { ...userForToken },
+        user: {
+            ...userForToken,
+            hasPassword: user.password !== dbConstants.status.pending,
+        },
         sessionId,
         exp: moment().add(24, 'hours').unix(),
     });

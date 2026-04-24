@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import {
     avoidNanParseInt,
+    dbConstants,
+    getTokenData,
     httpCodes,
     responseCodes,
     sendClientError,
@@ -9,9 +11,11 @@ import {
     webErrors,
 } from '@aure/commons';
 import { SequelizeService } from '../services/sequelize-service';
-import { UserViewModel } from '../viewmodels/user.viewmodel';
+import { IUserPasswordUpdateViewModel, UserViewModel } from '../viewmodels/user.viewmodel';
 import argon from 'argon2';
 import moment from 'moment';
+import { getLoginTokens } from './authentication.controller';
+import { IUserSession } from '../types/commons.types';
 
 export const getUsersByName = async (
     req: Request<{}, {}, {}, { username: string; page?: string; limit?: string }>,
@@ -68,21 +72,12 @@ export const getUserByIdAction = async (req: Request<{ id: string }>, res: Respo
 };
 
 export const updateUserAction = async (
-    req: Request<{ id: string }, {}, Partial<UserViewModel>, {}>,
+    req: Request<{ id: string }, {}, Omit<UserViewModel, 'password'>, {}>,
     res: Response,
 ) => {
     const { id } = req.params;
-    const {
-        name,
-        lastname,
-        email,
-        username,
-        password,
-        country_code,
-        telephone,
-        prof_pic,
-        is_active,
-    } = req.body;
+    const { name, lastname, email, username, country_code, telephone, prof_pic, is_active } =
+        req.body;
 
     const sequelize = await SequelizeService.getInstance();
     const foundUser = await sequelize.db.user.findByPk(id);
@@ -114,7 +109,6 @@ export const updateUserAction = async (
     if (telephone !== undefined) updatePayload.telephone = telephone;
     if (prof_pic !== undefined) updatePayload.prof_pic = prof_pic;
     if (is_active !== undefined) updatePayload.is_active = is_active ? 1 : 0;
-    if (password !== undefined) updatePayload.password = await argon.hash(password);
 
     const updatedUser = await foundUser.update(updatePayload);
     const { password: _, ...userData } = updatedUser.dataValues;
@@ -137,6 +131,34 @@ export const deleteUserAction = async (req: Request<{ id: string }>, res: Respon
     const { password: _, ...userData } = updatedUser.dataValues;
 
     return sendOkResponse({ status: responseCodes.ok, user: userData }, res);
+};
+
+export const updatePasswordAction = async (
+    req: Request<{}, {}, IUserPasswordUpdateViewModel, {}>,
+    res: Response,
+) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    const userInfo = getTokenData<IUserSession>(token ?? '');
+
+    const { oldPassword, password } = req.body;
+
+    const sequelize = await SequelizeService.getInstance();
+    const foundUser = await sequelize.db.user.findByPk(userInfo.user.id);
+
+    let isSamePassword = false;
+
+    if (oldPassword) isSamePassword = await argon.verify(foundUser?.password ?? '', oldPassword);
+    const hasPassword = foundUser?.password !== dbConstants.status.pending;
+
+    if (!foundUser || !(hasPassword ? isSamePassword : true))
+        return sendClientError(webErrors.auth03, res, httpCodes.bad_request);
+
+    const hashedPassword = await argon.hash(password);
+    await foundUser.update({ password: hashedPassword, last_modified: moment().utc().toDate() });
+
+    const { accessToken, refreshToken } = await getLoginTokens(foundUser, userInfo.sessionId);
+
+    return sendOkResponse({ status: responseCodes.ok, accessToken, refreshToken }, res);
 };
 
 export const banUserAction = async (req: Request<{ id: string }>, res: Response) => {
