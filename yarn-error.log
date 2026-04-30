@@ -14,7 +14,7 @@ Platform:
   linux x64
 
 Trace: 
-  Error: http://verdaccio:4873/@aure/commons/-/commons-2.0.82.tgz: Request failed "404 Not Found"
+  Error: http://verdaccio:4873/@amora95/commons/-/commons-2.0.82.tgz: Request failed "404 Not Found"
       at ResponseError.ExtendableBuiltin (/opt/yarn-v1.22.19/lib/cli.js:696:66)
       at new ResponseError (/opt/yarn-v1.22.19/lib/cli.js:802:124)
       at Request.<anonymous> (/opt/yarn-v1.22.19/lib/cli.js:66215:16)
@@ -46,7 +46,7 @@ npm manifest:
           "test:watch": "yarn build && jest --watch --selectProjects unit"
       },
       "dependencies": {
-          "@aure/commons": "^2.0.58",
+          "@amora95/commons": "^2.0.58",
           "@openfga/sdk": "^0.9.0",
           "@types/geoip-lite": "^1.4.4",
           "argon2": "^0.41.1",
@@ -116,9 +116,9 @@ Lockfile:
       "@jridgewell/gen-mapping" "^0.3.5"
       "@jridgewell/trace-mapping" "^0.3.24"
   
-  "@aure/commons@^2.0.58":
+  "@amora95/commons@^2.0.58":
     version "2.0.82"
-    resolved "http://verdaccio:4873/@aure/commons/-/commons-2.0.82.tgz#de981e5452ec4d9f87ef67c2ab12973c660e9b03"
+    resolved "http://verdaccio:4873/@amora95/commons/-/commons-2.0.82.tgz#de981e5452ec4d9f87ef67c2ab12973c660e9b03"
     integrity sha512-wxHD+7ftti+Ko0k1XRh/2wpW7IGkzK/nTmjGkqGymR6olXnrMcQAQMmc5PIVcUNtW5w/24lU130CXHAsLd3MFA==
     dependencies:
       "@aws-sdk/client-s3" "^3.896.0"

@@ -137,13 +137,13 @@ export default app;
 All tests in this stack import from `dist/` (compiled output). Paths in `jest.mock()` must point to
 `dist/`, not `src/`.
 
-### 5.1 Mock `@aure/commons`
+### 5.1 Mock `@amora95/commons`
 
 This package provides JWT helpers, HTTP response helpers, and shared constants. Always mock it
 completely to avoid any cryptographic or network side effects:
 
 ```js
-jest.mock('@aure/commons', () => ({
+jest.mock('@amora95/commons', () => ({
     createJWT: jest.fn(),
     getTokenData: jest.fn(),
     getTokenInfo: jest.fn(),
@@ -241,14 +241,14 @@ jest.mock('../../../../dist/utils/webclient-helper', () => ({
 }));
 ```
 
-### 5.6 Mock `OpenbaoVaultClient` (from `@aure/commons`)
+### 5.6 Mock `OpenbaoVaultClient` (from `@amora95/commons`)
 
-When testing code that reads secrets from Vault, mock the client via `@aure/commons`:
+When testing code that reads secrets from Vault, mock the client via `@amora95/commons`:
 
 ```js
 const mockGetSecret = jest.fn();
 
-jest.mock('@aure/commons', () => ({
+jest.mock('@amora95/commons', () => ({
     // ... other keys ...
     OpenbaoVaultClient: {
         getInstance: jest.fn(() => ({
@@ -303,7 +303,7 @@ jest.mock('../../../../dist/utils/webclient-helper', () => ({
     getBasicWebData: jest.fn(() => ({ userIp: '127.0.0.1', userOs: 'os', userAgent: 'agent' })),
 }));
 
-jest.mock('@aure/commons', () => ({
+jest.mock('@amora95/commons', () => ({
     httpCodes: { bad_request: 400, not_found: 404 },
     responseCodes: { ok: 'OK' },
     sendClientError: jest.fn(),
@@ -314,7 +314,7 @@ jest.mock('@aure/commons', () => ({
 // 2. Require the module under test AFTER all mocks are declared
 const { myAction } = require('../../../../dist/controllers/my.controller');
 const { SequelizeService } = require('../../../../dist/services/sequelize-service');
-const { sendClientError, sendOkResponse, webErrors, httpCodes } = require('@aure/commons');
+const { sendClientError, sendOkResponse, webErrors, httpCodes } = require('@amora95/commons');
 
 // 3. Test suite
 describe('my.controller', () => {

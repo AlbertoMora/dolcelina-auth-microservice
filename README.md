@@ -60,7 +60,7 @@ Built for a distributed microservices architecture, this service handles:
 - **Moment.js** - Date and time manipulation
 - **UUID** - Unique identifier generation
 - **XMLDOM** - XML parsing and serialization
-- **@aure/commons** - Shared internal utilities and middleware helpers
+- **@amora95/commons** - Shared internal utilities and middleware helpers
 
 ### Development & Testing
 

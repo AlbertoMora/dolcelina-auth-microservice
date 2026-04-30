@@ -10,7 +10,7 @@ import {
     sendServerError,
     webConstants,
     webErrors,
-} from '@aure/commons';
+} from '@amora95/commons';
 import { Request, Response } from 'express';
 import {
     IGoogleOAuthResponse,

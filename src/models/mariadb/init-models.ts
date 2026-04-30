@@ -82,12 +82,20 @@ export function initModels(sequelize: Sequelize) {
   order.hasMany(order_item, { as: "order_items", foreignKey: "order_id"});
   order_item.belongsTo(product, { as: "product", foreignKey: "product_id"});
   product.hasMany(order_item, { as: "order_items", foreignKey: "product_id"});
+  product_image.belongsTo(product, { as: "product", foreignKey: "product_id"});
+  product.hasMany(product_image, { as: "product_images", foreignKey: "product_id"});
   review.belongsTo(product, { as: "product", foreignKey: "product_id"});
   product.hasMany(review, { as: "reviews", foreignKey: "product_id"});
   ban_case.belongsTo(user, { as: "banned_player", foreignKey: "banned_player_id"});
   user.hasMany(ban_case, { as: "ban_cases", foreignKey: "banned_player_id"});
   ban_case.belongsTo(user, { as: "reported_by_player", foreignKey: "reported_by_player_id"});
   user.hasMany(ban_case, { as: "reported_by_player_ban_cases", foreignKey: "reported_by_player_id"});
+  banner.belongsTo(user, { as: "created_by_user", foreignKey: "created_by"});
+  user.hasMany(banner, { as: "banners", foreignKey: "created_by"});
+  order.belongsTo(user, { as: "user", foreignKey: "user_id"});
+  user.hasMany(order, { as: "orders", foreignKey: "user_id"});
+  product.belongsTo(user, { as: "created_by_user", foreignKey: "created_by"});
+  user.hasMany(product, { as: "products", foreignKey: "created_by"});
   review.belongsTo(user, { as: "user", foreignKey: "user_id"});
   user.hasMany(review, { as: "reviews", foreignKey: "user_id"});
 

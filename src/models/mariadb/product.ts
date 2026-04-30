@@ -2,7 +2,9 @@ import * as Sequelize from 'sequelize';
 import { DataTypes, Model, Optional } from 'sequelize';
 import type { category, categoryId } from './category';
 import type { order_item, order_itemId } from './order_item';
+import type { product_image, product_imageId } from './product_image';
 import type { review, reviewId } from './review';
+import type { user, userId } from './user';
 
 export interface productAttributes {
   id: string;
@@ -81,6 +83,18 @@ export class product extends Model<productAttributes, productCreationAttributes>
   hasOrder_item!: Sequelize.HasManyHasAssociationMixin<order_item, order_itemId>;
   hasOrder_items!: Sequelize.HasManyHasAssociationsMixin<order_item, order_itemId>;
   countOrder_items!: Sequelize.HasManyCountAssociationsMixin;
+  // product hasMany product_image via product_id
+  product_images!: product_image[];
+  getProduct_images!: Sequelize.HasManyGetAssociationsMixin<product_image>;
+  setProduct_images!: Sequelize.HasManySetAssociationsMixin<product_image, product_imageId>;
+  addProduct_image!: Sequelize.HasManyAddAssociationMixin<product_image, product_imageId>;
+  addProduct_images!: Sequelize.HasManyAddAssociationsMixin<product_image, product_imageId>;
+  createProduct_image!: Sequelize.HasManyCreateAssociationMixin<product_image>;
+  removeProduct_image!: Sequelize.HasManyRemoveAssociationMixin<product_image, product_imageId>;
+  removeProduct_images!: Sequelize.HasManyRemoveAssociationsMixin<product_image, product_imageId>;
+  hasProduct_image!: Sequelize.HasManyHasAssociationMixin<product_image, product_imageId>;
+  hasProduct_images!: Sequelize.HasManyHasAssociationsMixin<product_image, product_imageId>;
+  countProduct_images!: Sequelize.HasManyCountAssociationsMixin;
   // product hasMany review via product_id
   reviews!: review[];
   getReviews!: Sequelize.HasManyGetAssociationsMixin<review>;
@@ -93,6 +107,11 @@ export class product extends Model<productAttributes, productCreationAttributes>
   hasReview!: Sequelize.HasManyHasAssociationMixin<review, reviewId>;
   hasReviews!: Sequelize.HasManyHasAssociationsMixin<review, reviewId>;
   countReviews!: Sequelize.HasManyCountAssociationsMixin;
+  // product belongsTo user via created_by
+  created_by_user!: user;
+  getCreated_by_user!: Sequelize.BelongsToGetAssociationMixin<user>;
+  setCreated_by_user!: Sequelize.BelongsToSetAssociationMixin<user, userId>;
+  createCreated_by_user!: Sequelize.BelongsToCreateAssociationMixin<user>;
 
   static initModel(sequelize: Sequelize.Sequelize): typeof product {
     return product.init({
@@ -187,7 +206,11 @@ export class product extends Model<productAttributes, productCreationAttributes>
     },
     created_by: {
       type: DataTypes.STRING(50),
-      allowNull: true
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id'
+      }
     },
     creation_date: {
       type: DataTypes.DATE,
@@ -215,7 +238,14 @@ export class product extends Model<productAttributes, productCreationAttributes>
         ]
       },
       {
-        name: "products_categories_FK",
+        name: "product_user",
+        using: "BTREE",
+        fields: [
+          { name: "created_by" },
+        ]
+      },
+      {
+        name: "product_category",
         using: "BTREE",
         fields: [
           { name: "category_id" },

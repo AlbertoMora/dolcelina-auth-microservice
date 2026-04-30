@@ -17,7 +17,7 @@
         "test:watch": "yarn build && jest --watch --selectProjects unit"
     },
     "dependencies": {
-        "@aure/commons": "^2.0.58",
+        "@amora95/commons": "^2.0.86",
         "@types/geoip-lite": "^1.4.4",
         "argon2": "^0.41.1",
         "axios": "^1.11.0",

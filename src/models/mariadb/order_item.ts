@@ -5,6 +5,8 @@ import type { product, productId } from './product';
 
 export interface order_itemAttributes {
   id: string;
+  name: string;
+  image_uri: string;
   order_id: string;
   product_id: string;
   quantity: number;
@@ -17,6 +19,8 @@ export type order_itemCreationAttributes = order_itemAttributes;
 
 export class order_item extends Model<order_itemAttributes, order_itemCreationAttributes> implements order_itemAttributes {
   id!: string;
+  name!: string;
+  image_uri!: string;
   order_id!: string;
   product_id!: string;
   quantity!: number;
@@ -39,6 +43,14 @@ export class order_item extends Model<order_itemAttributes, order_itemCreationAt
       type: DataTypes.STRING(50),
       allowNull: false,
       primaryKey: true
+    },
+    name: {
+      type: DataTypes.STRING(50),
+      allowNull: false
+    },
+    image_uri: {
+      type: DataTypes.STRING(255),
+      allowNull: false
     },
     order_id: {
       type: DataTypes.STRING(50),
@@ -78,14 +90,14 @@ export class order_item extends Model<order_itemAttributes, order_itemCreationAt
         ]
       },
       {
-        name: "order_items_order",
+        name: "order_item_order_fk",
         using: "BTREE",
         fields: [
           { name: "order_id" },
         ]
       },
       {
-        name: "order_items_product",
+        name: "order_item_product_fk",
         using: "BTREE",
         fields: [
           { name: "product_id" },

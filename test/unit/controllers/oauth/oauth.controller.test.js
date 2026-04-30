@@ -33,7 +33,7 @@ jest.mock('../../../../dist/utils/webclient-helper', () => ({
     })),
 }));
 
-jest.mock('@aure/commons', () => ({
+jest.mock('@amora95/commons', () => ({
     dbConstants: { status: { pending: 'pending' } },
     getTokenData: jest.fn(),
     httpCodes: { not_found: 404, bad_request: 400 },
@@ -65,7 +65,7 @@ const {
     sendOkResponse,
     sendServerError,
     webErrors,
-} = require('@aure/commons');
+} = require('@amora95/commons');
 
 describe('oauth.controller', () => {
     beforeEach(() => {

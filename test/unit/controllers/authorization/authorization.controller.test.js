@@ -13,13 +13,13 @@ jest.mock('../../../../dist/utils/session-helper', () => ({
     }),
 }));
 
-jest.mock('@aure/commons', () => ({
+jest.mock('@amora95/commons', () => ({
     responseCodes: { ok: 'OK' },
     sendOkResponse: jest.fn(),
 }));
 
 const { checkPermissionAction } = require('../../../../dist/controllers/authorization.controller');
-const { sendOkResponse } = require('@aure/commons');
+const { sendOkResponse } = require('@amora95/commons');
 
 describe('authorization.controller', () => {
     beforeEach(() => {

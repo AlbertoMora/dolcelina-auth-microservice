@@ -1,8 +1,8 @@
-jest.mock('@aure/commons', () => ({
+jest.mock('@amora95/commons', () => ({
     getTokenData: jest.fn(),
 }));
 
-const { getTokenData } = require('@aure/commons');
+const { getTokenData } = require('@amora95/commons');
 const { getUserSession } = require('../../../dist/utils/session-helper');
 
 describe('getUserSession', () => {

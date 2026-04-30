@@ -1,5 +1,6 @@
 import * as Sequelize from 'sequelize';
 import { DataTypes, Model, Optional } from 'sequelize';
+import type { user, userId } from './user';
 
 export interface bannerAttributes {
   id: string;
@@ -35,6 +36,11 @@ export class banner extends Model<bannerAttributes, bannerCreationAttributes> im
   btn_text!: string;
   btn_icon!: string;
 
+  // banner belongsTo user via created_by
+  created_by_user!: user;
+  getCreated_by_user!: Sequelize.BelongsToGetAssociationMixin<user>;
+  setCreated_by_user!: Sequelize.BelongsToSetAssociationMixin<user, userId>;
+  createCreated_by_user!: Sequelize.BelongsToCreateAssociationMixin<user>;
 
   static initModel(sequelize: Sequelize.Sequelize): typeof banner {
     return banner.init({
@@ -69,7 +75,11 @@ export class banner extends Model<bannerAttributes, bannerCreationAttributes> im
     },
     created_by: {
       type: DataTypes.STRING(50),
-      allowNull: true
+      allowNull: true,
+      references: {
+        model: 'users',
+        key: 'id'
+      }
     },
     created_at: {
       type: DataTypes.DATE,
@@ -100,6 +110,13 @@ export class banner extends Model<bannerAttributes, bannerCreationAttributes> im
         using: "BTREE",
         fields: [
           { name: "id" },
+        ]
+      },
+      {
+        name: "banner_user",
+        using: "BTREE",
+        fields: [
+          { name: "created_by" },
         ]
       },
     ]

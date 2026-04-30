@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    container_name: auth-microservice-dev
+    container_name: dolcelina-auth-microservice-dev
     ports:
       - "3202:3202"
       - "9229:9229"
@@ -16,12 +16,7 @@ services:
       - /app/node_modules
       - shared-tokens:/app/shared-tokens
     command: >
-      sh -c "npm config set registry http://verdaccio:4873
-      && npm config set //verdaccio:4873/:username admin
-      && npm config set //verdaccio:4873/:_password YWRtaW4=
-      && npm config set //verdaccio:4873/:email admin@verdaccio.local
-      && yarn config set registry http://verdaccio:4873
-      && yarn install --frozen-lockfile
+      sh -c "yarn install --frozen-lockfile
       && yarn start"
     networks:
       - ms-network

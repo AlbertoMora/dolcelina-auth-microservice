@@ -47,7 +47,7 @@ jest.mock('uuid', () => ({
     v4: jest.fn(() => 'generated-user-id'),
 }));
 
-jest.mock('@aure/commons', () => ({
+jest.mock('@amora95/commons', () => ({
     createJWT: jest.fn(),
     dbConstants: { status: { pending: 'pending' } },
     getTokenData: jest.fn(),
@@ -86,7 +86,7 @@ const {
     sendClientError,
     sendOkResponse,
     webErrors,
-} = require('@aure/commons');
+} = require('@amora95/commons');
 
 describe('authentication.controller', () => {
     beforeEach(() => {

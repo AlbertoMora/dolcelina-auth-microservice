@@ -8,7 +8,7 @@ jest.mock('argon2', () => ({
     hash: jest.fn(),
 }));
 
-jest.mock('@aure/commons', () => ({
+jest.mock('@amora95/commons', () => ({
     avoidNanParseInt: jest.fn(v => v),
     httpCodes: { not_found: 404, bad_request: 400 },
     responseCodes: { ok: 'OK' },
@@ -36,7 +36,7 @@ const {
     sendClientError,
     sendOkResponse,
     webErrors,
-} = require('@aure/commons');
+} = require('@amora95/commons');
 
 describe('users.controller', () => {
     beforeEach(() => {

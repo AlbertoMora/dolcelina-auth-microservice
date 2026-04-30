@@ -8,7 +8,7 @@ import {
     signUpAction,
     signOutAction,
 } from '../controllers/authentication.controller';
-import { controllerHandler } from '@aure/commons';
+import { controllerHandler } from '@amora95/commons';
 
 const router = Router();
 

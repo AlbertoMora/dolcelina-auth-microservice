@@ -9,7 +9,7 @@ import {
     sendClientError,
     sendOkResponse,
     webErrors,
-} from '@aure/commons';
+} from '@amora95/commons';
 import { SequelizeService } from '../services/sequelize-service';
 import { IUserPasswordUpdateViewModel, UserViewModel } from '../viewmodels/user.viewmodel';
 import argon from 'argon2';
@@ -185,4 +185,23 @@ export const banUserAction = async (req: Request<{ id: string }>, res: Response)
     const { password: _, ...userData } = updatedUser.dataValues;
 
     return sendOkResponse({ status: responseCodes.ok, user: userData, banCase }, res);
+};
+
+export const toggleAdminAction = async (req: Request<{ id: string }>, res: Response) => {
+    const { id } = req.params;
+
+    const sequelize = await SequelizeService.getInstance();
+    const foundUser = await sequelize.db.user.findByPk(id);
+
+    if (!foundUser) return sendClientError(webErrors.srv01, res, httpCodes.not_found);
+
+    const updatedUser = await foundUser.update({
+        is_admin: foundUser.is_admin ? 0 : 1,
+        last_modified: moment().utc().toDate(),
+    });
+
+    await updatedUser.save();
+
+    const { password: _, ...userData } = updatedUser.dataValues;
+    return sendOkResponse({ status: responseCodes.ok, user: userData }, res);
 };

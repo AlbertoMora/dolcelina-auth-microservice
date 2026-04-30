@@ -1,5 +1,6 @@
 import * as Sequelize from 'sequelize';
 import { DataTypes, Model, Optional } from 'sequelize';
+import type { product, productId } from './product';
 
 export interface product_imageAttributes {
   id: string;
@@ -21,6 +22,11 @@ export class product_image extends Model<product_imageAttributes, product_imageC
   alt_text?: string;
   created_at?: Date;
 
+  // product_image belongsTo product via product_id
+  product!: product;
+  getProduct!: Sequelize.BelongsToGetAssociationMixin<product>;
+  setProduct!: Sequelize.BelongsToSetAssociationMixin<product, productId>;
+  createProduct!: Sequelize.BelongsToCreateAssociationMixin<product>;
 
   static initModel(sequelize: Sequelize.Sequelize): typeof product_image {
     return product_image.init({
@@ -31,7 +37,11 @@ export class product_image extends Model<product_imageAttributes, product_imageC
     },
     product_id: {
       type: DataTypes.STRING(50),
-      allowNull: false
+      allowNull: false,
+      references: {
+        model: 'products',
+        key: 'id'
+      }
     },
     image_url: {
       type: DataTypes.STRING(255),
@@ -56,6 +66,13 @@ export class product_image extends Model<product_imageAttributes, product_imageC
         using: "BTREE",
         fields: [
           { name: "id" },
+        ]
+      },
+      {
+        name: "product_images",
+        using: "BTREE",
+        fields: [
+          { name: "product_id" },
         ]
       },
     ]

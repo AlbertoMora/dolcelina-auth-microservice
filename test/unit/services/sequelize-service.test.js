@@ -16,7 +16,7 @@ jest.mock('node:fs', () => ({
     readFileSync: mockReadFileSync,
 }));
 
-jest.mock('@aure/commons', () => ({
+jest.mock('@amora95/commons', () => ({
     OpenbaoVaultClient: {
         getInstance: jest.fn(() => ({
             getSecret: mockGetSecret,

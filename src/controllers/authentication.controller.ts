@@ -14,7 +14,7 @@ import {
     sendOkResponse,
     webConstants,
     webErrors,
-} from '@aure/commons';
+} from '@amora95/commons';
 import moment from 'moment';
 import { user } from '../models/mariadb/user';
 import Session, { ISession } from '../models/mongoose/Session';
@@ -59,7 +59,7 @@ export const loginAction = async (req: Request, res: Response) => {
         sessionIP: userIp,
         isActive: true,
         location: location,
-        signedInSince: moment().toDate(),
+        signedInSince: moment().utc().toDate(),
     });
 
     const tokens = await getLoginTokens(user, currentSession.id);
@@ -197,10 +197,7 @@ const isUserBanned = async (playerId: string) => {
         order: [['resolved_at', 'DESC']],
     });
 
-    if (lastBanCase?.banned_until) {
-        return lastBanCase.banned_until > moment(moment.now()).toDate();
-    }
-    return false;
+    return !!lastBanCase;
 };
 
 export const sendLoginTokens = async (currentSession: ISession, user: user, res: Response) => {

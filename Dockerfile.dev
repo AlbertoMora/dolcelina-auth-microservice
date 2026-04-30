@@ -7,5 +7,6 @@ COPY package.json yarn.lock ./
 COPY . .
 
 EXPOSE 3202
+EXPOSE 9229
 
 CMD ["yarn", "start"]
