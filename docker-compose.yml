@@ -6,7 +6,7 @@ services:
     container_name: dolcelina-auth-microservice-dev
     ports:
       - "3202:3202"
-      - "9229:9229"
+      - "9232:9232"
     environment:
       NODE_ENV: development
       REDIS_HOST: redis
